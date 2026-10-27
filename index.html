@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hồi quy dữ liệu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF; --soft:#F4F6F7; --soft-2:#E8ECEE;
+  --ink:#101418; --ink-2:#39424B; --ink-3:#6B757E;
+  --line:#CFD6DB; --line-2:#E4E9EC;
+  --accent:#1D4ED8; --accent-soft:#E9F0FD; --accent-dk:#1E3A8A;
+  --c0:#15807E; --c1:#B07E12; --c2:#6A4A9E; --c3:#C2410C; --c4:#2563EB;
+  --good:#1F6B3E; --good-soft:#DEEFE5;
+  --bad:#A32C2C; --bad-soft:#F8E0DF;
+  --gray-pt:#8E99A3;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg); margin:0;}
+body{color:var(--ink); font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:17px; line-height:1.5; -webkit-font-smoothing:antialiased;}
+.wrap{max-width:1500px; margin:0 auto; padding:18px 22px 26px;}
+a{color:var(--accent);}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;}
+
+header{text-align:center; padding:4px 0 12px;}
+h1{font-size:clamp(26px,3.2vw,36px); font-weight:800; letter-spacing:-.02em; line-height:1.15;
+  margin:0; color:var(--accent-dk);}
+
+.seg{display:inline-flex; border:1.5px solid var(--line); border-radius:8px; overflow:hidden; flex-wrap:wrap;}
+.seg button{appearance:none; border:0; background:var(--bg); font:inherit; font-size:15px; font-weight:600;
+  padding:8px 15px; cursor:pointer; color:var(--ink-2); border-right:1.5px solid var(--line);}
+.seg button:last-child{border-right:0;}
+.seg button:hover{background:var(--soft);}
+.seg button[aria-pressed="true"]{background:var(--accent); color:#fff;}
+.seg button:focus-visible{outline:3px solid var(--accent); outline-offset:-3px;}
+
+.two{display:grid; grid-template-columns:minmax(0,1.65fr) minmax(0,1fr); gap:20px; align-items:start;}
+.two.even{grid-template-columns:repeat(2,minmax(0,1fr));}
+.three{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px;}
+.col{display:flex; flex-direction:column; gap:16px;}
+
+.box{border:1.5px solid var(--line); border-radius:10px; background:var(--bg); overflow:hidden;}
+.box-h{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;
+  padding:12px 16px; border-bottom:1.5px solid var(--line-2); background:var(--soft);}
+.box-h h3{margin:0; font-size:18px; font-weight:700; color:var(--accent-dk);}
+.box-h .meta{font-size:14px; color:var(--ink-3);}
+.box-b{padding:16px;}
+
+h2{font-size:22px; font-weight:800; letter-spacing:-.01em; margin:0 0 10px; color:var(--accent-dk);}
+p{margin:0 0 11px;}
+.muted{color:var(--ink-3);}
+
+.panel{padding-top:14px;}
+.stage{min-height:60vh;}
+.stage > *{animation:fade .28s ease-out;}
+@keyframes fade{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+.stage .two{align-items:stretch;}
+
+ol.prog{list-style:none; margin:0 0 16px; padding:0; display:flex; align-items:stretch;
+  gap:0; border:1.5px solid var(--line); border-radius:10px; overflow:hidden;}
+ol.prog li{flex:1 1 0; min-width:0;}
+ol.prog button{width:100%; height:100%; appearance:none; background:var(--bg); border:0;
+  border-right:1.5px solid var(--line); font:inherit; cursor:pointer; padding:9px 10px 10px;
+  display:grid; gap:1px; text-align:left;}
+ol.prog li:last-child button{border-right:0;}
+ol.prog .sn{font-size:12.5px; font-weight:700; color:var(--ink-3);}
+ol.prog .st{font-size:15.5px; font-weight:700; color:var(--ink-2); line-height:1.25;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+ol.prog button:hover{background:var(--soft);}
+ol.prog li.done button{background:var(--soft);}
+ol.prog li.done .st{color:var(--ink-3);}
+ol.prog li.cur button{background:var(--accent);}
+ol.prog li.cur .sn{color:#BBD0F7;}
+ol.prog li.cur .st{color:#fff;}
+ol.prog button:focus-visible{outline:3px solid var(--accent-dk); outline-offset:-3px;}
+
+svg.chart{display:block; width:100%; height:auto; max-height:54vh;}
+.tick{font-family:"JetBrains Mono",monospace; font-size:13px; fill:var(--ink-2);}
+.axlab{font-size:15px; font-weight:700; fill:var(--ink);}
+.gridline{stroke:var(--line-2); stroke-width:1.2;}
+.axis{stroke:var(--ink-3); stroke-width:1.6;}
+.pt{transition:fill .45s ease, fill-opacity .45s ease;}
+.cenG{transition:transform .55s cubic-bezier(.4,.1,.2,1);}
+.ring{transition:opacity .45s ease;}
+.legend{display:flex; flex-wrap:wrap; gap:8px 20px; padding:4px 16px 14px; font-size:15px; color:var(--ink-2);}
+.legend span{display:inline-flex; align-items:center; gap:8px;}
+.legend i{width:13px; height:13px; border-radius:50%; display:inline-block; flex:none;}
+
+.say{border:1.5px solid var(--line); border-left:5px solid var(--accent); border-radius:0 10px 10px 0;
+  padding:15px 17px; background:var(--accent-soft);}
+.say h3{margin:0 0 9px; font-size:19px; font-weight:800; color:var(--accent-dk);}
+.say p{margin:0 0 10px; font-size:16.5px; color:var(--ink-2);}
+.say p:last-child{margin:0;}
+.say strong{color:var(--ink);}
+.say ul{margin:0 0 10px; padding-left:22px; font-size:16.5px; color:var(--ink-2);}
+.say li{margin-bottom:6px;}
+
+.note{border-left:5px solid var(--ink-3); background:var(--soft); padding:13px 16px; border-radius:0 8px 8px 0;
+  font-size:16px; color:var(--ink-2); margin:16px 0 0;}
+.note strong{color:var(--ink);}
+.note.warn{border-left-color:var(--bad); background:var(--bad-soft);}
+.note.ok{border-left-color:var(--good); background:var(--good-soft);}
+
+.kpis{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px;}
+.kpis.three{grid-template-columns:repeat(3,minmax(0,1fr));}
+.kpis.four{grid-template-columns:repeat(4,minmax(0,1fr));}
+.kpi{background:var(--soft); border-radius:8px; padding:11px 13px;}
+.kpi .k{font-size:13.5px; font-weight:600; color:var(--ink-3); display:block; line-height:1.3;}
+.kpi .v{font-family:"JetBrains Mono",monospace; font-size:26px; font-weight:700; display:block;
+  letter-spacing:-.02em; line-height:1.25; margin-top:1px;}
+.kpi .u{font-size:13.5px; color:var(--ink-3); display:block; line-height:1.3;}
+
+.run{display:flex; flex-wrap:wrap; gap:10px 12px; align-items:center; margin:16px 0 0;}
+.btn{appearance:none; font:inherit; font-size:16px; font-weight:700; cursor:pointer; border-radius:8px;
+  padding:10px 20px; border:2px solid var(--ink); background:var(--ink); color:#fff;
+  display:inline-flex; align-items:center; gap:8px;}
+.btn:hover{background:#000;}
+.btn.ghost{background:var(--bg); color:var(--ink-2); border-color:var(--line);}
+.btn.ghost:hover{border-color:var(--ink-3); color:var(--ink);}
+.btn[disabled]{opacity:.35; cursor:default;}
+.btn:focus-visible{outline:3px solid var(--accent); outline-offset:2px;}
+.run .hint{font-size:15px; color:var(--ink-3);}
+
+.sl{display:grid; gap:5px;}
+.sl .slh{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+  font-size:15.5px; color:var(--ink-2); font-weight:600;}
+.sl .slh b{font-family:"JetBrains Mono",monospace; font-size:18px; color:var(--ink); font-weight:700;}
+input[type=range]{width:100%; accent-color:var(--accent); margin:0; height:24px;}
+
+.lesson{display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:start;
+  background:#FFF8E1; border:2px solid #E0A800; border-radius:10px; padding:14px 17px; margin:16px 0 0;}
+.lesson .tag{font-size:13.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+  color:#8A6400; background:#FFE9A8; border-radius:6px; padding:5px 10px; white-space:nowrap;}
+.lesson p{margin:0; font-size:17px; color:#3D2E00; font-weight:600; line-height:1.45;}
+.lesson p strong{color:#1A1400;}
+
+.loopbar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 16px;
+  background:var(--accent-soft); border:1.5px solid var(--line); border-radius:10px;}
+.loopbar .num{font-family:"JetBrains Mono",monospace; font-size:17px; font-weight:700; color:var(--accent-dk);}
+.loopbar .bar{flex:1 1 120px; height:9px; background:#fff; border-radius:5px; overflow:hidden;
+  border:1px solid var(--line);}
+.loopbar .bar i{display:block; height:100%; background:var(--accent); transition:width .3s ease;}
+
+table.t{border-collapse:collapse; width:100%; font-size:16px;}
+table.t th, table.t td{padding:9px 12px; border-bottom:1.5px solid var(--line-2); text-align:right;}
+table.t th{font-size:14px; font-weight:700; color:var(--ink-3); text-align:right;
+  border-bottom:1.5px solid var(--line);}
+table.t th:first-child, table.t td:first-child{text-align:left;}
+table.t td.l, table.t th.l{text-align:left;}
+table.t td.n{font-family:"JetBrains Mono",monospace; white-space:nowrap;}
+table.t tr:last-child td{border-bottom:0;}
+table.t th.ext, table.t td.ext{background:var(--accent-soft); }
+table.t th.ext{color:var(--accent);}
+table.t td.win{font-weight:800; color:var(--accent-dk);}
+.tw{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+table.t.compact{font-size:15px;}
+table.t.compact th, table.t.compact td{padding:6px 10px;}
+.sw{display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:8px;}
+
+.cards{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px;}
+.card{border:1.5px solid var(--line); border-radius:10px; padding:15px 16px; display:flex;
+  flex-direction:column; gap:8px;}
+.card h3{margin:0; font-size:18px; font-weight:800; display:flex; align-items:center; gap:9px; color:var(--accent-dk);}
+.card p{margin:0; font-size:16px; color:var(--ink-2);}
+.card .act{margin-top:auto; padding-top:10px; border-top:1.5px dashed var(--line);
+  font-size:16px; color:var(--ink); font-weight:700;}
+
+.pcard{border:1.5px solid var(--line); border-radius:10px; overflow:hidden;}
+.pcard .ph{padding:11px 15px; border-bottom:1.5px solid var(--line-2); background:var(--soft);}
+.pcard .ph h3{margin:0; font-size:17.5px; font-weight:800; color:var(--accent-dk);}
+.pcard .pf{padding:0 15px 14px; font-size:15.5px; color:var(--ink-2); margin:10px 0 0;}
+.pcard.fin{border-color:var(--accent);}
+.pcard.fin .ph{background:var(--accent-soft);}
+
+@media (max-width:1100px){
+  .two,.two.even{grid-template-columns:minmax(0,1fr);}
+  .three{grid-template-columns:minmax(0,1fr);}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:720px){
+  body{font-size:16px;}
+  .wrap{padding:14px 14px 22px;}
+  .cards{grid-template-columns:minmax(0,1fr);}
+  .kpis.three,.kpis.four{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .tw table.t{min-width:560px;}
+}
+@media (prefers-reduced-motion:reduce){ .pt,.cenG,.ring{transition:none;} }
+
+/* ---------- bảng 12 hàng biết trượt ----------
+   Hàng dựng một lần rồi chỉ đổi transform. Không dựng lại thì mắt mới
+   theo được dòng nào về khối nào, đó là toàn bộ ý nghĩa của bước khoanh vùng. */
+.dhead{display:grid; grid-template-columns:40px 1.15fr 1fr 1.25fr;
+  gap:0 10px; padding:0 20px 7px; font-size:13.5px; font-weight:700; color:var(--ink-3);}
+.dbox{position:relative; transition:height .5s ease;}
+.band{position:absolute; left:0; right:0; top:0; border-radius:11px;
+  background:var(--soft); border:1.5px dashed var(--line); opacity:0;
+  transition:transform .5s ease, height .5s ease, opacity .3s ease;}
+.band .bh{padding:5px 14px 0; font-size:14px; font-weight:800; color:var(--ink-2);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.band .bh em{font-style:normal; font-weight:600; color:var(--ink-3);}
+.drow{position:absolute; left:10px; right:10px; height:30px; box-sizing:border-box;
+  display:grid; grid-template-columns:40px 1.15fr 1fr 1.25fr; gap:0 10px;
+  align-items:center; padding:0 10px; border-radius:7px; font-size:14.5px;
+  transition:transform .55s cubic-bezier(.4,0,.2,1), background-color .4s ease, color .4s ease;}
+.drow b{font-family:"JetBrains Mono",monospace; font-weight:700; font-size:13px; opacity:.75;}
+.drow .sn2{font-family:"JetBrains Mono",monospace; font-size:14px;}
+.drow .kq{font-weight:800;}
+.drow.xam{background:#EEF1F3; color:var(--ink-3);}
+
+/* ---------- công thức toán ---------- */
+.ct{border:1.5px solid var(--line); border-left:4px solid var(--accent);
+  border-radius:9px; background:var(--bg); padding:13px 16px; margin:12px 0;}
+/* công thức dựng bằng HTML và CSS, không nhờ phông toán của trình duyệt */
+/* KHÔNG dùng flex ở đây: flex item mất đường chân nên sub nhảy lên thành số mũ */
+.ft{font-size:21px; line-height:2.1; color:var(--ink); margin:4px 0 2px;}
+.ft i{font-style:italic; font-family:Georgia,"Times New Roman",serif; font-size:1.05em;}
+.ft .fn{font-style:normal; font-family:inherit; font-size:1em;}
+.ft sub{font-size:.6em; font-style:italic; font-family:Georgia,"Times New Roman",serif;}
+.ft sub.n{font-size:.6em; font-style:normal; font-family:inherit;}
+.ft sup{font-size:.62em;}
+.ft .sg{display:inline-flex; flex-direction:column; align-items:center;
+  line-height:1; margin:0 7px; vertical-align:middle;}
+.ft .sg .g{font-size:1.7em; line-height:.86;
+  font-family:"Cambria Math","STIX Two Math",Georgia,serif;}
+.ft .sg .l{font-size:.62em; color:var(--ink-3); white-space:nowrap; padding:2px 0;}
+.ft .fr{display:inline-flex; flex-direction:column; align-items:center;
+  margin:0 7px; font-size:.84em; line-height:1.3; vertical-align:middle;}
+.ft .fr .t{border-bottom:1.6px solid currentColor; padding:0 7px 2px;}
+.ft .fr .m{padding:2px 7px 0;}
+.ft .rad{border-top:1.6px solid currentColor; padding:0 4px;}
+.ct .rap{font-family:"JetBrains Mono",monospace; font-size:14.5px; line-height:1.75;
+  color:var(--ink-2); margin:10px 0 0; word-break:break-word;}
+.ct .rap .kq{color:var(--accent-dk); font-weight:700;}
+.ct .nhan{font-size:13.5px; font-weight:700; color:var(--ink-3); margin:0 0 6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>Hồi quy dữ liệu</h1></header>
+  <div class="panel">
+    <ol class="prog" id="prog"></ol>
+    <div class="stage" id="stage"></div>
+    <div class="run">
+      <button class="btn ghost" id="bPrev" type="button">&#9664; Lùi</button>
+      <button class="btn" id="bNext" type="button">Bước tiếp &#9654;</button>
+      <span class="hint" id="runHint"></span>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+/* ========== tiện ích chung ========== */
+function fmt(v,d){ d=d||0; return Number(v).toLocaleString("vi-VN",{minimumFractionDigits:d,maximumFractionDigits:d}).replace("-","−"); }
+function $(id){ return document.getElementById(id); }
+function clamp(v,a,b){ return Math.min(b,Math.max(a,v)); }
+function mean(a){ var s=0; for(var i=0;i<a.length;i++) s+=a[i]; return s/a.length; }
+function sdev(a){ var m=mean(a),s=0; for(var i=0;i<a.length;i++) s+=(a[i]-m)*(a[i]-m); return Math.sqrt(s/a.length); }
+function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+var HEXES=["#15807E","#B07E12","#6A4A9E","#C2410C","#2563EB"];
+var SOFTS=["#DDEEED","#F6ECD4","#E9E2F4","#FBE4D8","#DFE8FB"];
+var GRAY="#8E99A3", GRAYS="#EEF1F3";
+/* cỡ chữ nhãn vẽ trong biểu đồ, bản ảnh cho slide dùng cỡ lớn hơn */
+var CHU={nhan:13.5, cot:14};
+
+/* ========== vẽ SVG ========== */
+var NS="http://www.w3.org/2000/svg";
+function el(tag,attrs,txt){ var e=document.createElementNS(NS,tag); for(var a in attrs) e.setAttribute(a,attrs[a]); if(txt!=null) e.textContent=txt; return e; }
+function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
+function axes(svg,o){
+  var W=o.W,H=o.H,ML=o.ML,MR=o.MR,MT=o.MT,MB=o.MB;
+  var px=function(v){return ML+(v-o.xlo)/(o.xhi-o.xlo)*(W-ML-MR);};
+  var py=function(v){return H-MB-(v-o.ylo)/(o.yhi-o.ylo)*(H-MT-MB);};
+  var i;
+  for(i=0;i<o.yticks.length;i++){
+    svg.appendChild(el("line",{x1:ML,x2:W-MR,y1:py(o.yticks[i]),y2:py(o.yticks[i]),"class":"gridline"}));
+    svg.appendChild(el("text",{x:ML-7,y:py(o.yticks[i])+3.5,"class":"tick","text-anchor":"end"},fmt(o.yticks[i])));
+  }
+  for(i=0;i<o.xticks.length;i++){
+    svg.appendChild(el("text",{x:px(o.xticks[i]),y:H-MB+17,"class":"tick","text-anchor":"middle"},fmt(o.xticks[i])));
+  }
+  svg.appendChild(el("line",{x1:ML,x2:W-MR,y1:H-MB,y2:H-MB,"class":"axis"}));
+  svg.appendChild(el("line",{x1:ML,x2:ML,y1:MT,y2:H-MB,"class":"axis"}));
+  if(o.xlab) svg.appendChild(el("text",{x:(ML+W-MR)/2,y:H-6,"class":"axlab","text-anchor":"middle"},o.xlab));
+  if(o.ylab){ var cy=(MT+H-MB)/2; svg.appendChild(el("text",{x:14,y:cy,"class":"axlab","text-anchor":"middle",transform:"rotate(-90 14 "+cy+")"},o.ylab)); }
+  return {px:px,py:py};
+}
+function haloText(svg,x,y,txt,col,anchor,size,weight){
+  svg.appendChild(el("text",{x:x,y:y,"text-anchor":anchor||"middle",
+    style:"fill:"+col+";font-weight:"+(weight||700)+";font-size:"+(size||16)+"px;font-family:'Be Vietnam Pro',sans-serif;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round"},txt));
+}
+function seg(id,items,cur,on){
+  var box=$(id); if(!box) return; box.innerHTML="";
+  items.forEach(function(it){
+    var b=document.createElement("button"); b.type="button"; b.textContent=it.label;
+    b.setAttribute("aria-pressed", String(it.value===cur));
+    b.addEventListener("click",function(){ on(it.value); });
+    box.appendChild(b);
+  });
+}
+/* ================= HỘP CHỨA ================= */
+function kpiBox(lab,val,unit,col){
+  return '<div class="kpi"><span class="k">'+lab+'</span>'+
+    '<span class="v"'+(col?' style="color:'+col+'"':'')+'>'+val+'</span>'+
+    (unit?'<span class="u">'+unit+'</span>':'')+'</div>'; }
+function lesson(t){ return '<div class="lesson"><span class="tag">Bài học</span><p>'+t+'</p></div>'; }
+function chuThich(nhan){
+  return '<div class="legend">'+nhan.map(function(z,i){
+    return '<span><i style="background:'+(z.mau||HEXES[i])+'"></i>'+z.ten+'</span>'; }).join("")+'</div>';
+}
+
+/* ===================================================================
+   Tám tháng chi phí vận hành của một xưởng bánh.
+   Đúng bộ dữ liệu dùng trong slide và trong sổ tay Colab.
+   Sản lượng tính bằng nghìn sản phẩm, chi phí tính bằng triệu đồng.
+   Cột Khuyến mại chỉ được dùng ở bước cuối, khi thêm biến giả, nên
+   trước đó bảng không hiện cột này.
+   =================================================================== */
+var DU=[
+ ["Th1",2,34,1],["Th2",3,37,0],["Th3",4,42,0],["Th4",5,51,1],
+ ["Th5",6,57,1],["Th6",7,60,0],["Th7",8,67,0],["Th8",9,76,1]
+].map(function(a,i){ return {id:i, ten:a[0], sl:a[1], cp:a[2], km:a[3]}; });
+
+/* tháng dừng máy sửa lò: sản lượng thấp mà chi phí cao, dùng ở bước ngoại lai */
+var NGOAI={id:8, ten:"Th9", sl:3, cp:70, km:0};
+
+var XLAB="Sản lượng X (nghìn sản phẩm)", YLAB="Chi phí Y (triệu đồng)";
+
+/* ================= HỒI QUY ================= */
+/* OLS một biến, trả về cả các tổng trung gian để bước tính tay dùng lại */
+function olsDon(rows){
+  var n=rows.length, sx=0, sy=0, i;
+  for(i=0;i<n;i++){ sx+=rows[i].sl; sy+=rows[i].cp; }
+  var mx=sx/n, my=sy/n, sxy=0, sxx=0;
+  for(i=0;i<n;i++){
+    sxy+=(rows[i].sl-mx)*(rows[i].cp-my);
+    sxx+=(rows[i].sl-mx)*(rows[i].sl-mx);
+  }
+  var b2=sxy/sxx;
+  return {n:n, mx:mx, my:my, sxy:sxy, sxx:sxx, b2:b2, b1:my-b2*mx};
+}
+/* các chỉ số của một đường bất kỳ, không bắt buộc là đường OLS */
+function chiSo(rows,b1,b2,b3){
+  var n=rows.length, rss=0, sae=0, tss=0, my=0, i, e;
+  for(i=0;i<n;i++) my+=rows[i].cp; my/=n;
+  for(i=0;i<n;i++){
+    e=rows[i].cp-duBao(rows[i],b1,b2,b3);
+    rss+=e*e; sae+=Math.abs(e);
+    tss+=(rows[i].cp-my)*(rows[i].cp-my);
+  }
+  return {rss:rss, mae:sae/n, mse:rss/n, rmse:Math.sqrt(rss/n), tss:tss, r2:1-rss/tss};
+}
+function duBao(d,b1,b2,b3){ return b1+b2*d.sl+(b3?b3*d.km:0); }
+function phanDu(rows,b1,b2,b3){
+  return rows.map(function(d){ return d.cp-duBao(d,b1,b2,b3); });
+}
+/* giải hệ tuyến tính bằng khử Gauss, dùng cho hệ phương trình chuẩn của hồi quy bội */
+function giaiHe(A,b){
+  var n=b.length, i, j, k, p, t;
+  for(i=0;i<n;i++){
+    p=i; for(k=i+1;k<n;k++) if(Math.abs(A[k][i])>Math.abs(A[p][i])) p=k;
+    t=A[i]; A[i]=A[p]; A[p]=t; t=b[i]; b[i]=b[p]; b[p]=t;
+    for(k=i+1;k<n;k++){
+      var f=A[k][i]/A[i][i];
+      for(j=i;j<n;j++) A[k][j]-=f*A[i][j];
+      b[k]-=f*b[i];
+    }
+  }
+  var x=new Array(n);
+  for(i=n-1;i>=0;i--){
+    var s=b[i];
+    for(j=i+1;j<n;j++) s-=A[i][j]*x[j];
+    x[i]=s/A[i][i];
+  }
+  return x;
+}
+/* hồi quy bội với hai biến giải thích: sản lượng và biến giả khuyến mại */
+function olsBoi(rows){
+  var cols=[function(d){return 1;}, function(d){return d.sl;}, function(d){return d.km;}];
+  var k=cols.length, A=[], b=[], i, j, r;
+  for(i=0;i<k;i++){ A.push([]); b.push(0); for(j=0;j<k;j++) A[i].push(0); }
+  for(r=0;r<rows.length;r++){
+    for(i=0;i<k;i++){
+      b[i]+=cols[i](rows[r])*rows[r].cp;
+      for(j=0;j<k;j++) A[i][j]+=cols[i](rows[r])*cols[j](rows[r]);
+    }
+  }
+  var s=giaiHe(A,b);
+  return {b1:s[0], b2:s[1], b3:s[2]};
+}
+
+var OLS=olsDon(DU);                       /* 20 và 6 */
+var CS=chiSo(DU,OLS.b1,OLS.b2);           /* RSS 20, MAE 1,5, RMSE 1,58, R2 0,987 */
+var BOI=olsBoi(DU);                       /* 18,5 ; 6 ; 3 */
+var CSB=chiSo(DU,BOI.b1,BOI.b2,BOI.b3);   /* RSS 2 */
+var DU9=DU.concat([NGOAI]);
+var OLS9=olsDon(DU9);                     /* 31,36 và 4,51 */
+var CS9=chiSo(DU9,OLS9.b1,OLS9.b2);
+var CS9CU=chiSo(DU9,OLS.b1,OLS.b2);       /* đường cũ đo trên 9 tháng */
+
+/* ba đường để so ở bước đầu phần kỹ thuật, đường C đúng là đường OLS */
+var BA=[{ten:"Đường A", b1:24, b2:5, mau:HEXES[1]},
+        {ten:"Đường B", b1:15, b2:7, mau:HEXES[2]},
+        {ten:"Đường C", b1:20, b2:6, mau:HEXES[0]}];
+BA.forEach(function(z){ z.rss=chiSo(DU,z.b1,z.b2).rss; });
+
+/* ================= BIỂU ĐỒ PHÂN TÁN ================= */
+/* một hàm vẽ duy nhất cho mọi bước, các bước chỉ đổi tham số */
+function catDuong(b1,b2,xlo,xhi,ylo,yhi){
+  var pts=[];
+  function add(x,y){
+    if(x>=xlo-1e-9 && x<=xhi+1e-9 && y>=ylo-1e-9 && y<=yhi+1e-9) pts.push([x,y]);
+  }
+  add(xlo,b1+b2*xlo); add(xhi,b1+b2*xhi);
+  if(b2!==0){ add((ylo-b1)/b2,ylo); add((yhi-b1)/b2,yhi); }
+  if(pts.length<2) return null;
+  pts.sort(function(a,b){ return a[0]-b[0]; });
+  return [pts[0],pts[pts.length-1]];
+}
+function veTan(id,o){
+  o=o||{};
+  var svg=$(id); if(!svg) return;
+  clear(svg);
+  var rows=o.rows||DU;
+  var W=760, H=520, ML=78, MR=24, MT=20, MB=58;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  var xlo=(o.xlo==null?1:o.xlo), xhi=(o.xhi==null?10:o.xhi);
+  var ylo=(o.ylo==null?30:o.ylo), yhi=(o.yhi==null?80:o.yhi);
+  var xt=[], yt=[], v;
+  for(v=Math.ceil(xlo);v<=xhi+1e-9;v+=(o.xstep||1)) xt.push(v);
+  for(v=ylo;v<=yhi+1e-9;v+=10) yt.push(v);
+  var m=axes(svg,{W:W,H:H,ML:ML,MR:MR,MT:MT,MB:MB,xlo:xlo,xhi:xhi,ylo:ylo,yhi:yhi,
+    xticks:xt, yticks:yt, xlab:XLAB, ylab:YLAB});
+  var duong=o.duong||[], i, d, k;
+
+  /* đoạn phần dư vẽ trước để đường và điểm nằm trên */
+  if(o.phanDu && duong.length){
+    d=duong[0];
+    for(i=0;i<rows.length;i++){
+      var yh=duBao(rows[i],d.b1,d.b2,d.b3);
+      var e=rows[i].cp-yh;
+      if(Math.abs(e)<1e-9) continue;
+      svg.appendChild(el("line",{x1:m.px(rows[i].sl), x2:m.px(rows[i].sl),
+        y1:m.py(rows[i].cp), y2:m.py(yh),
+        stroke:(e>0?"#1F6B3E":"#A32C2C"), "stroke-width":3.2, "stroke-dasharray":"5 4", "class":"pd"}));
+      if(o.nhanPhanDu){
+        haloText(svg, m.px(rows[i].sl)+(e>0?16:16), (m.py(rows[i].cp)+m.py(yh))/2+5,
+          (e>0?"+":"−")+fmt(Math.abs(e),1), (e>0?"#1F6B3E":"#A32C2C"), "start", CHU.nhan+1.5, 700);
+      }
+    }
+  }
+
+  for(k=0;k<duong.length;k++){
+    d=duong[k];
+    var cac=[{b3:0,dash:null}];
+    if(d.b3) cac=[{b3:0,dash:"7 5"},{b3:d.b3,dash:null}];
+    for(i=0;i<cac.length;i++){
+      var seg2=catDuong(d.b1+cac[i].b3, d.b2, xlo, xhi, ylo, yhi);
+      if(!seg2) continue;
+      svg.appendChild(el("line",{x1:m.px(seg2[0][0]), y1:m.py(seg2[0][1]),
+        x2:m.px(seg2[1][0]), y2:m.py(seg2[1][1]),
+        stroke:(d.b3 ? (cac[i].b3 ? HEXES[3] : HEXES[4]) : (d.mau||"#1D4ED8")), "stroke-width":(d.manh||3.2),
+        "stroke-dasharray":(cac[i].dash||d.dash||""), "stroke-linecap":"round"}));
+      if(d.ten){
+        var xr=Math.min(xhi, seg2[1][0]), yr=d.b1+cac[i].b3+d.b2*xr;
+        /* nhãn không được trèo ra ngoài khung, nếu không ảnh chụp sẽ cụt chữ */
+        haloText(svg, m.px(xr)-6, Math.max(MT+22, m.py(yr)-12),
+          d.ten+(d.b3?(cac[i].b3?", có khuyến mại":", không khuyến mại"):""),
+          (d.b3 ? (cac[i].b3 ? HEXES[3] : HEXES[4]) : (d.mau||"#1D4ED8")), "end", CHU.nhan+2, 800);
+      }
+    }
+  }
+
+  /* điểm trung bình, dùng ở bước tính tay để thấy đường đi qua nó */
+  if(o.tamDiem){
+    svg.appendChild(el("path",{d:"M "+m.px(o.tamDiem[0])+" "+(m.py(o.tamDiem[1])-11)+
+      " l 11 11 l -11 11 l -11 -11 z", fill:"#fff", stroke:"#1E3A8A", "stroke-width":3}));
+    haloText(svg, m.px(o.tamDiem[0]), m.py(o.tamDiem[1])-20,
+      "(X̄; Ȳ) = ("+fmt(o.tamDiem[0],1)+"; "+fmt(o.tamDiem[1],1)+")", "#1E3A8A","middle",CHU.nhan+2,800);
+  }
+
+  for(i=0;i<rows.length;i++){
+    var la=(rows[i].id===NGOAI.id), mau;
+    if(la) mau="#A32C2C";
+    else if(o.mauTheoKM) mau=(rows[i].km?HEXES[3]:HEXES[4]);
+    else mau=(o.mauDiem||GRAY);
+    svg.appendChild(el("circle",{cx:m.px(rows[i].sl), cy:m.py(rows[i].cp),
+      r:(la?9:7.5), fill:mau, stroke:"#fff", "stroke-width":2, "class":"pt"}));
+    if(o.nhan){
+      haloText(svg, m.px(rows[i].sl), m.py(rows[i].cp)-15, rows[i].ten,
+        la?"#A32C2C":"#39424B", "middle", CHU.nhan, 700);
+    }
+  }
+
+  /* tháng cần dự báo, chấm rỗng viền xanh */
+  if(o.moi){
+    svg.appendChild(el("line",{x1:m.px(o.moi.sl), x2:m.px(o.moi.sl), y1:m.py(ylo), y2:m.py(o.moi.cp),
+      stroke:"#1D4ED8","stroke-width":2,"stroke-dasharray":"4 4"}));
+    svg.appendChild(el("line",{x1:m.px(xlo), x2:m.px(o.moi.sl), y1:m.py(o.moi.cp), y2:m.py(o.moi.cp),
+      stroke:"#1D4ED8","stroke-width":2,"stroke-dasharray":"4 4"}));
+    svg.appendChild(el("circle",{cx:m.px(o.moi.sl), cy:m.py(o.moi.cp), r:9,
+      fill:"#fff", stroke:"#1D4ED8", "stroke-width":3.4}));
+    haloText(svg, m.px(o.moi.sl), m.py(o.moi.cp)-18,
+      "("+fmt(o.moi.sl,1)+"; "+fmt(o.moi.cp,1)+")", "#1E3A8A", "middle", CHU.nhan+2, 800);
+  }
+  if(o.vungDL){
+    svg.appendChild(el("rect",{x:m.px(2), y:MT, width:m.px(9)-m.px(2), height:H-MB-MT,
+      fill:"#1D4ED8","fill-opacity":0.06}));
+    haloText(svg,(m.px(2)+m.px(9))/2, MT+20, "vùng có dữ liệu", "#1E3A8A","middle",CHU.nhan+1,700);
+  }
+  return m;
+}
+
+/* RSS theo hệ số góc, hệ số chặn luôn lấy theo công thức để mỗi ω̂2 có một RSS */
+function rssTheoB2(b2){
+  var b1=OLS.my-b2*OLS.mx;
+  return chiSo(DU,b1,b2).rss;
+}
+function veParabol(id,cur){
+  var svg=$(id); if(!svg) return;
+  clear(svg);
+  var W=760,H=430,ML=86,MR=24,MT=22,MB=58;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  var xlo=3, xhi=9, ylo=0, yhi=360;
+  var xt=[],yt=[],v;
+  for(v=3;v<=9;v++) xt.push(v);
+  for(v=0;v<=360;v+=60) yt.push(v);
+  var m=axes(svg,{W:W,H:H,ML:ML,MR:MR,MT:MT,MB:MB,xlo:xlo,xhi:xhi,ylo:ylo,yhi:yhi,
+    xticks:xt,yticks:yt,xlab:"Hệ số góc ω̂₂",ylab:"RSS"});
+  var p=[], x;
+  for(x=xlo;x<=xhi+1e-9;x+=0.05) p.push(m.px(x)+","+m.py(Math.min(yhi,rssTheoB2(x))));
+  svg.appendChild(el("polyline",{points:p.join(" "), fill:"none", stroke:"#1D4ED8","stroke-width":3.2}));
+  svg.appendChild(el("line",{x1:m.px(OLS.b2),x2:m.px(OLS.b2),y1:m.py(ylo),y2:m.py(CS.rss),
+    stroke:"#1F6B3E","stroke-width":2.4,"stroke-dasharray":"5 4"}));
+  svg.appendChild(el("circle",{cx:m.px(OLS.b2),cy:m.py(CS.rss),r:8,fill:"#1F6B3E",stroke:"#fff","stroke-width":2.4}));
+  haloText(svg,m.px(OLS.b2),m.py(CS.rss)-18,"đáy: ω̂₂ = "+fmt(OLS.b2,0)+", RSS = "+fmt(CS.rss,0),
+    "#1F6B3E","middle",CHU.nhan+2,800);
+  if(cur!=null){
+    var rc=Math.min(yhi,rssTheoB2(cur));
+    svg.appendChild(el("circle",{cx:m.px(clamp(cur,xlo,xhi)),cy:m.py(rc),r:8,
+      fill:"#C2410C",stroke:"#fff","stroke-width":2.4}));
+  }
+  return m;
+}
+/* cột bình phương phần dư từng tháng, thay cho hình ô vuông vì hai trục khác thang */
+function veCot(id,b1,b2,b3){
+  var svg=$(id); if(!svg) return;
+  clear(svg);
+  var rows=DU, e=phanDu(rows,b1,b2,b3);
+  var W=760,H=300,ML=78,MR=24,MT=24,MB=56;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  var yhi=5, yt=[0,1,2,3,4,5], i;
+  var m=axes(svg,{W:W,H:H,ML:ML,MR:MR,MT:MT,MB:MB,xlo:0.4,xhi:rows.length+0.6,ylo:0,yhi:yhi,
+    xticks:[],yticks:yt,xlab:"",ylab:"eᵢ bình phương"});
+  var bw=(m.px(2)-m.px(1))*0.52;
+  for(i=0;i<rows.length;i++){
+    var h=m.py(0)-m.py(Math.min(yhi,e[i]*e[i]));
+    svg.appendChild(el("rect",{x:m.px(i+1)-bw/2, y:m.py(Math.min(yhi,e[i]*e[i])), width:bw, height:Math.max(h,1),
+      fill:(e[i]>=0?"#1F6B3E":"#A32C2C"), "fill-opacity":0.85, rx:3}));
+    svg.appendChild(el("text",{x:m.px(i+1), y:m.py(0)+20, "class":"tick", "text-anchor":"middle"},rows[i].ten));
+    haloText(svg,m.px(i+1),m.py(Math.min(yhi,e[i]*e[i]))-8,fmt(e[i]*e[i],2),
+      (e[i]>=0?"#1F6B3E":"#A32C2C"),"middle",CHU.nhan,700);
+  }
+  return m;
+}
+
+/* ================= BẢNG DỮ LIỆU ================= */
+function bangDu(o){
+  o=o||{};
+  var rows=o.rows||DU, b1=o.b1, b2=o.b2, b3=o.b3;
+  var h='<div class="tw"><table class="t compact"><thead><tr><th class="l">Tháng</th>'+
+    '<th>Sản lượng Xᵢ</th>'+(o.km?'<th>Khuyến mại</th>':'')+'<th>Chi phí Yᵢ</th>';
+  if(b1!=null) h+='<th class="ext">Dự báo Ŷᵢ</th>';
+  if(o.e) h+='<th class="ext">Phần dư eᵢ</th>';
+  h+='</tr></thead><tbody>';
+  rows.forEach(function(d){
+    var la=(d.id===NGOAI.id);
+    h+='<tr'+(la?' style="color:#A32C2C;font-weight:700"':'')+'><td class="l">'+d.ten+'</td>'+
+      '<td class="n">'+fmt(d.sl,0)+'</td>'+
+      (o.km?'<td class="n">'+(d.km?"Có":"Không")+'</td>':'')+
+      '<td class="n">'+fmt(d.cp,0)+'</td>';
+    if(b1!=null){
+      var yh=duBao(d,b1,b2,b3);
+      h+='<td class="n ext">'+fmt(yh,1)+'</td>';
+      if(o.e) h+='<td class="n ext">'+(d.cp-yh>=0?"+":"−")+fmt(Math.abs(d.cp-yh),1)+'</td>';
+    } else if(o.e) h+='<td class="n ext"></td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+function khung(tieu,meta,than,fin){
+  return '<div class="box'+(fin?" fin":"")+'"><div class="box-h"><h3>'+tieu+'</h3>'+
+    (meta?'<span class="meta">'+meta+'</span>':'')+'</div>'+than+'</div>';
+}
+function chartBox(tieu,meta,id,duoi){
+  return '<div class="box"><div class="box-h"><h3>'+tieu+'</h3>'+
+    (meta?'<span class="meta">'+meta+'</span>':'')+'</div><svg class="chart" id="'+id+'"></svg>'+
+    (duoi||'')+'</div>';
+}
+
+/* ================= TRẠNG THÁI ================= */
+var STEP=0;
+var B1=14, B2=4.6;          /* hai hệ số người học tự kéo */
+var SLMOI=6.5;              /* sản lượng của tháng cần dự báo */
+var BATNGOAI=false;         /* đã thêm tháng sửa lò hay chưa */
+var BATKM=false;            /* đã thêm biến giả khuyến mại hay chưa */
+
+/* ================= CÁC BƯỚC =================
+   Bốn bước đầu cho thấy hồi quy làm được gì.
+   Năm bước sau mở ra xem máy tìm đường bằng cách nào và đo sai số ra sao.
+   ============================================= */
+var VSTEP=[
+
+{ label:"Dữ liệu thô",
+  html:function(){
+    return '<div class="two">'+
+      khung("Tám tháng của một xưởng bánh","mỗi dòng là một tháng",'<div class="box-b">'+bangDu({})+'</div>')+
+      '<div class="col">'+
+      '<div class="say"><h3>Bảng đã có cột đáp án</h3>'+
+      '<p>Mỗi dòng là một tháng, ghi <strong>sản lượng</strong> tính bằng nghìn sản phẩm và <strong>chi phí vận hành</strong> tính bằng triệu đồng.</p>'+
+      '<p>Chi phí của tám tháng này đều đã biết. Đây là cột cần dự báo cho tháng chưa xảy ra.</p></div>'+
+      '<div class="kpis three">'+kpiBox("Số dòng","8","tháng")+kpiBox("Biến giải thích","1","sản lượng")+
+      kpiBox("Cột cần dự báo","1","chi phí")+'</div>'+
+      '<div class="note"><strong>Việc cần làm.</strong> Phòng kế hoạch đã chốt sản lượng tháng tới là 6,5 nghìn sản phẩm. Họ cần một con số chi phí để lập dự toán, không cần biết tháng đó thuộc nhóm nào.</div>'+
+      '</div></div>'+
+      lesson('Hồi quy bắt đầu từ dữ liệu <strong>đã có đáp án và đáp án là một con số</strong>. Phân lớp cũng có đáp án nhưng đáp án là nhãn, phân cụm thì không có đáp án nào.');
+  },
+  draw:function(){},
+  update:function(){} },
+
+{ label:"Tám điểm trên mặt phẳng",
+  html:function(){
+    return '<div class="two">'+
+      chartBox("Mỗi tháng là một điểm","8 điểm, chưa có đường nào","chTho")+
+      '<div class="col">'+
+      '<div class="say"><h3>Hai cột số thành hai trục</h3>'+
+      '<p>Trục ngang là sản lượng, trục dọc là chi phí. Mỗi tháng thành <strong>một điểm</strong> có tọa độ (Xᵢ; Yᵢ).</p>'+
+      '<p>Các chấm đi lên từ trái sang phải, sản lượng càng cao thì chi phí càng lớn. Đó là <strong>tương quan dương</strong>.</p></div>'+
+      '<div class="note">Trục tung bắt đầu từ 30 để tám điểm không dồn vào một dải hẹp.</div>'+
+      '<div class="note"><strong>Chưa trả lời được câu hỏi.</strong> Hình cho thấy xu hướng chung, nhưng để nói chi phí ở mức sản lượng 6,5 là bao nhiêu triệu thì cần một đường cụ thể viết được thành công thức.</div>'+
+      '</div></div>'+
+      lesson('Biểu đồ phân tán là bước xem trước bắt buộc của hồi quy. Nếu các chấm rải lung tung thì không có đường thẳng nào đáng tin, và phải xem lại biến giải thích.');
+  },
+  draw:function(){ veTan("chTho",{nhan:true}); },
+  update:function(){} },
+
+{ label:"Đường hồi quy",
+  html:function(){
+    return '<div class="two">'+
+      chartBox("Đường hồi quy mẫu","Ŷᵢ = 20 + 6Xᵢ","chDuong")+
+      '<div class="col">'+
+      '<div class="say"><h3>Kết quả của hồi quy</h3>'+
+      '<p>Hồi quy trả lại <strong>một hàm số</strong>, ở đây là Ŷᵢ = '+fmt(OLS.b1,0)+' + '+fmt(OLS.b2,0)+'Xᵢ. Thay sản lượng vào là ra chi phí dự báo.</p>'+
+      '<p>Bảng vì vậy mọc thêm cột Ŷᵢ. Mỗi tháng có một con số dự báo đặt cạnh con số thật.</p></div>'+
+      '<div class="kpis three">'+
+      kpiBox("Hệ số chặn ω̂₁",fmt(OLS.b1,0),"triệu đồng",HEXES[0])+
+      kpiBox("Hệ số góc ω̂₂",fmt(OLS.b2,0),"triệu mỗi nghìn sp",HEXES[0])+
+      kpiBox("Mức khớp R²",fmt(CS.r2*100,1)+"%","trên tám tháng này")+'</div>'+
+      '<div class="box"><div class="box-h"><h3>Bảng đã có cột dự báo</h3></div><div class="box-b">'+
+      bangDu({b1:OLS.b1,b2:OLS.b2})+'</div></div>'+
+      '</div></div>'+
+      lesson('Hai hệ số đọc được bằng tiếng Việt. <strong>20 triệu là phần chi phí không đổi theo sản lượng</strong>, tức định phí. <strong>6 triệu là mức tăng cho mỗi nghìn sản phẩm</strong>, tức biến phí 6 nghìn đồng một sản phẩm.');
+  },
+  draw:function(){ veTan("chDuong",{nhan:true,duong:[{b1:OLS.b1,b2:OLS.b2,mau:"#1D4ED8"}]}); },
+  update:function(){} },
+
+{ label:"Dự báo tháng tới",
+  html:function(){
+    return '<div class="two">'+
+      chartBox("Thay sản lượng vào đường","chấm rỗng là tháng cần dự báo","chMoi")+
+      '<div class="col">'+
+      '<div class="box"><div class="box-h"><h3>Sản lượng kế hoạch</h3></div><div class="box-b">'+
+      '<div class="sl"><div class="slh"><span>Sản lượng tháng tới</span><b id="slMoiV">6,5</b></div>'+
+      '<input type="range" id="slMoi" min="1" max="14" step="0.5" value="'+SLMOI+'"></div>'+
+      '<div class="kpis" style="margin-top:14px">'+
+      '<div class="kpi"><span class="k">Chi phí dự báo Ŷ</span><span class="v" id="kMoi">59,0</span><span class="u">triệu đồng</span></div>'+
+      '<div class="kpi"><span class="k">Vị trí của X</span><span class="v" id="kVung" style="font-size:19px">nội suy</span><span class="u" id="kVungU">trong vùng dữ liệu</span></div>'+
+      '</div></div></div>'+
+      '<div id="moiSay" class="say"></div>'+
+      '</div></div>'+
+      lesson('Dự báo là thay một giá trị X vào hàm vừa tìm. Nếu X nằm ngoài khoảng dữ liệu đã có thì gọi là <strong>ngoại suy</strong>, con số vẫn tính ra được nhưng không có gì bảo đảm xu hướng cũ còn đúng ở đó.');
+  },
+  draw:function(){
+    var s=$("slMoi");
+    if(s) s.addEventListener("input",function(){ SLMOI=parseFloat(s.value); capNhatMoi(); });
+    capNhatMoi();
+  },
+  update:function(){ capNhatMoi(); } },
+
+{ label:"Phần dư và RSS",
+  html:function(){
+    return '<div class="two">'+
+      chartBox("Ba đường cùng trông hợp lý","đoạn nét đứt là phần dư","chBa",
+        '<div class="legend"><span><i style="background:#1F6B3E"></i>eᵢ dương, điểm nằm trên đường</span>'+
+        '<span><i style="background:#A32C2C"></i>eᵢ âm, điểm nằm dưới đường</span></div>')+
+      '<div class="col">'+
+      '<div class="box"><div class="box-h"><h3>Chọn đường để xem phần dư</h3></div><div class="box-b">'+
+      '<div class="seg" id="sgBa"></div>'+
+      '<div class="ct" style="margin-top:14px"><p class="nhan">PHẦN DƯ</p>'+
+      '<p class="ft"><i>e<sub>i</sub></i> = <i>Y<sub>i</sub></i> − <i>Ŷ<sub>i</sub></i></p>'+
+      '<p class="rap">RSS = tổng của e₁², e₂², ..., e₈²</p></div>'+
+      '<div class="kpis" style="margin-top:14px">'+
+      '<div class="kpi"><span class="k">RSS của đường đang xem</span><span class="v" id="kRssBa">20</span><span class="u">triệu đồng bình phương</span></div>'+
+      '<div class="kpi"><span class="k">Sai lệch lớn nhất</span><span class="v" id="kMaxBa">2,0</span><span class="u">triệu đồng</span></div>'+
+      '</div></div></div>'+
+      '<div class="box"><div class="box-h"><h3>Ba đường, ba con số RSS</h3></div><div class="box-b">'+
+      '<div class="tw"><table class="t compact"><thead><tr><th class="l">Đường</th><th>Hàm số</th><th>RSS</th></tr></thead><tbody>'+
+      BA.map(function(z,i){ return '<tr id="trBa'+i+'"><td class="l">'+z.ten+'</td><td class="n">Ŷᵢ = '+
+        fmt(z.b1,0)+' + '+fmt(z.b2,0)+'Xᵢ</td><td class="n'+(z.rss===CS.rss?' win':'')+'">'+fmt(z.rss,0)+'</td></tr>'; }).join("")+
+      '</tbody></table></div></div></div>'+
+      '</div></div>'+
+      lesson('Bình phương phần dư có hai tác dụng: <strong>khử dấu âm</strong> để sai lệch hai phía không triệt tiêu nhau, và <strong>phạt nặng sai lệch lớn</strong>, sai 2 bị phạt 4 còn sai 0,5 chỉ bị phạt 0,25.');
+  },
+  draw:function(){ veSegBa(); capNhatBa(); },
+  update:function(){ capNhatBa(); } },
+
+{ label:"Kéo đường hạ RSS",
+  html:function(){
+    return '<div class="two">'+
+      chartBox("Đường do bạn chọn","kéo hai thanh trượt để RSS nhỏ nhất","chKeo")+
+      '<div class="col">'+
+      '<div class="box"><div class="box-h"><h3>Hai hệ số</h3><span class="meta">RSS nhỏ nhất là 20</span></div><div class="box-b">'+
+      '<div class="sl"><div class="slh"><span>Hệ số chặn ω̂₁</span><b id="vB1">14,0</b></div>'+
+      '<input type="range" id="slB1" min="4" max="34" step="0.5" value="'+B1+'"></div>'+
+      '<div class="sl" style="margin-top:12px"><div class="slh"><span>Hệ số góc ω̂₂</span><b id="vB2">4,6</b></div>'+
+      '<input type="range" id="slB2" min="3" max="9" step="0.1" value="'+B2+'"></div>'+
+      '<div class="kpis" style="margin-top:14px">'+
+      '<div class="kpi"><span class="k">RSS đang có</span><span class="v" id="kRssKeo">0</span><span class="u" id="uRssKeo"></span></div>'+
+      '<div class="kpi"><span class="k">Cách đáy</span><span class="v" id="kCach">0</span><span class="u">còn thừa so với 20</span></div>'+
+      '</div>'+
+      '<div class="run"><button class="btn" id="bOls" type="button">Máy tìm đường tốt nhất</button>'+
+      '<span class="hint">OLS cho đáp số bằng công thức, không cần thử</span></div>'+
+      '</div></div>'+
+      chartBox("RSS theo hệ số góc","hệ số chặn lấy theo công thức","chPar")+
+      '</div></div>'+
+      '<div class="two" style="margin-top:16px">'+
+      '<div class="ct"><p class="nhan">CÔNG THỨC BÌNH PHƯƠNG NHỎ NHẤT</p>'+
+      '<p class="ft">ω̂<sub class="n">2</sub> = <span class="fr"><span class="t">Σ <i>x<sub>i</sub></i><i>y<sub>i</sub></i></span><span class="m">Σ <i>x<sub>i</sub></i><sup>2</sup></span></span>, &nbsp; ω̂<sub class="n">1</sub> = <i>Ȳ</i> − ω̂<sub class="n">2</sub><i>X̄</i></p>'+
+      '<p class="rap">với xᵢ = Xᵢ − X̄ và yᵢ = Yᵢ − Ȳ<br>'+
+      'X̄ = '+fmt(OLS.mx,1)+' ; Ȳ = '+fmt(OLS.my,0)+' ; Σxᵢyᵢ = '+fmt(OLS.sxy,0)+' ; Σxᵢ² = '+fmt(OLS.sxx,0)+'<br>'+
+      'ω̂₂ = '+fmt(OLS.sxy,0)+' / '+fmt(OLS.sxx,0)+' = <span class="kq">'+fmt(OLS.b2,0)+'</span> ; '+
+      'ω̂₁ = '+fmt(OLS.my,0)+' − '+fmt(OLS.b2,0)+' × '+fmt(OLS.mx,1)+' = <span class="kq">'+fmt(OLS.b1,0)+'</span></p></div>'+
+      '<div class="note ok"><strong>Đường luôn đi qua điểm trung bình.</strong> Thay X̄ = '+fmt(OLS.mx,1)+' vào hàm vừa tìm được '+
+      fmt(OLS.b1,0)+' + '+fmt(OLS.b2,0)+' × '+fmt(OLS.mx,1)+' = '+fmt(OLS.my,0)+', đúng bằng Ȳ. Đây là cách kiểm tra nhanh phép tính tay.</div>'+
+      '</div>'+
+      lesson('Kéo tay thì mỗi lần thử chỉ biết RSS của một đường. <strong>OLS giải trực tiếp ra ω̂₁ và ω̂₂ làm RSS nhỏ nhất</strong>, nên không ai đi dò bằng tay trong thực tế.');
+  },
+  draw:function(){
+    var a=$("slB1"), b=$("slB2"), o=$("bOls");
+    if(a) a.addEventListener("input",function(){ B1=parseFloat(a.value); capNhatKeo(); });
+    if(b) b.addEventListener("input",function(){ B2=parseFloat(b.value); capNhatKeo(); });
+    if(o) o.addEventListener("click",function(){
+      B1=OLS.b1; B2=OLS.b2;
+      if(a) a.value=String(B1);
+      if(b) b.value=String(B2);
+      capNhatKeo();
+    });
+    capNhatKeo();
+  },
+  update:function(){ capNhatKeo(); } },
+
+{ label:"Đo sai số",
+  html:function(){
+    return '<div class="two">'+
+      chartBox("Bình phương phần dư từng tháng","đường Ŷᵢ = 20 + 6Xᵢ","chCot",
+        '<div class="box-b" style="padding-top:0">'+bangDu({b1:OLS.b1,b2:OLS.b2,e:true})+'</div>')+
+      '<div class="col">'+
+      '<div class="kpis four">'+
+      kpiBox("RSS",fmt(CS.rss,0),"triệu bình phương")+
+      kpiBox("MAE",fmt(CS.mae,1),"triệu đồng",HEXES[0])+
+      kpiBox("RMSE",fmt(CS.rmse,2),"triệu đồng",HEXES[0])+
+      kpiBox("R²",fmt(CS.r2,3),"không có đơn vị")+'</div>'+
+      '<div class="say"><h3>Bốn chỉ số, bốn câu trả lời</h3>'+
+      '<ul><li><strong>RSS</strong> là tổng bình phương phần dư, dùng để chọn đường chứ không dùng để báo cáo.</li>'+
+      '<li><strong>MAE '+fmt(CS.mae,1)+' triệu</strong> là mức lệch trung bình, nói được bằng tiền.</li>'+
+      '<li><strong>RMSE '+fmt(CS.rmse,2)+' triệu</strong> cũng tính bằng tiền nhưng nhạy với sai lệch lớn, nên luôn lớn hơn hoặc bằng MAE.</li>'+
+      '<li><strong>R² '+fmt(CS.r2*100,1)+'%</strong> so mô hình với cách luôn dự báo bằng trung bình '+fmt(OLS.my,0)+' triệu.</li></ul></div>'+
+      '<div class="ct"><p class="nhan">R BÌNH PHƯƠNG</p>'+
+      '<p class="ft"><i>R</i><sup>2</sup> = 1 − <span class="fr"><span class="t">RSS</span><span class="m">TSS</span></span></p>'+
+      '<p class="rap">TSS = '+fmt(CS.tss,0)+' là RSS của cách luôn dự báo Ȳ<br>'+
+      'R² = 1 − '+fmt(CS.rss,0)+' / '+fmt(CS.tss,0)+' = <span class="kq">'+fmt(CS.r2,3)+'</span></p></div>'+
+      '</div></div>'+
+      lesson('R² cao không có nghĩa dự báo đúng. Nó chỉ nói mô hình <strong>tốt hơn cách luôn lấy trung bình</strong> bao nhiêu phần, và luôn phải đọc kèm MAE hoặc RMSE vì hai chỉ số này mới tính bằng tiền.');
+  },
+  draw:function(){ veCot("chCot",OLS.b1,OLS.b2); },
+  update:function(){} },
+
+{ label:"Điểm ngoại lai",
+  html:function(){
+    return '<div class="two">'+
+      chartBox("Một tháng bất thường","Th9 dừng máy sửa lò","chNg")+
+      '<div class="col">'+
+      '<div class="box"><div class="box-h"><h3>Bật tháng thứ chín</h3></div><div class="box-b">'+
+      '<div class="seg" id="sgNg"></div></div></div>'+
+      '<div class="kpis three" id="ngKpi"></div>'+
+      '<div id="ngSay" class="say"></div>'+
+      '</div></div>'+
+      lesson('Một điểm ở xa đủ sức kéo lệch cả đường vì RSS phạt bình phương sai lệch. Việc cần làm là <strong>tìm nguyên nhân</strong>, ở đây là tháng sửa lò. Không tự động xóa điểm ngoại lai chỉ vì nó làm số liệu xấu.');
+  },
+  draw:function(){ veSegNg(); capNhatNgoai(); },
+  update:function(){ capNhatNgoai(); } },
+
+{ label:"Thêm biến khuyến mại",
+  html:function(){
+    return '<div class="two">'+
+      chartBox("Hai đường song song","chấm cam là tháng có khuyến mại","chBoi",
+        '<div class="legend"><span><i style="background:'+HEXES[3]+'"></i>Tháng có khuyến mại</span>'+
+        '<span><i style="background:'+HEXES[4]+'"></i>Tháng không khuyến mại</span></div>')+
+      '<div class="col">'+
+      '<div class="box"><div class="box-h"><h3>Số biến giải thích</h3></div><div class="box-b">'+
+      '<div class="seg" id="sgKm"></div>'+
+      '<div class="tw" style="margin-top:14px"><table class="t compact"><thead><tr><th class="l">Cột chữ</th>'+
+      '<th class="ext">Biến giả D₃ᵢ</th></tr></thead><tbody>'+
+      '<tr><td class="l">Có khuyến mại</td><td class="n ext">1</td></tr>'+
+      '<tr><td class="l">Không khuyến mại</td><td class="n ext">0</td></tr>'+
+      '</tbody></table></div></div></div>'+
+      '<div class="kpis three" id="kmKpi"></div>'+
+      '<div id="kmSay" class="say"></div>'+
+      '</div></div>'+
+      lesson('Cột chữ phải đổi thành <strong>biến giả 1 và 0</strong> trước khi đưa vào hồi quy. Hệ số của nó là khoảng chênh giữa hai nhóm khi các biến còn lại giữ nguyên, trên hình là khoảng cách giữa hai đường song song.');
+  },
+  draw:function(){ veSegKm(); capNhatKm(); },
+  update:function(){ capNhatKm(); } }];
+
+/* ================= BƯỚC: DỰ BÁO THÁNG TỚI ================= */
+function capNhatMoi(){
+  var yh=OLS.b1+OLS.b2*SLMOI;
+  var ngoai=(SLMOI<2 || SLMOI>9);
+  veTan("chMoi",{duong:[{b1:OLS.b1,b2:OLS.b2,mau:"#1D4ED8"}],
+    moi:{sl:SLMOI,cp:yh}, vungDL:true,
+    xlo:1, xhi:14, ylo:30, yhi:Math.max(80,Math.ceil((yh+8)/10)*10)});
+  var v=$("slMoiV"); if(v) v.textContent=fmt(SLMOI,1);
+  var k=$("kMoi"); if(k) k.textContent=fmt(yh,1);
+  var z=$("kVung"); if(z) z.textContent=(ngoai?"ngoại suy":"nội suy");
+  var u=$("kVungU"); if(u) u.textContent=(ngoai?"ngoài khoảng 2 tới 9":"trong vùng dữ liệu");
+  var s=$("moiSay"); if(!s) return;
+  s.className=(ngoai?"note warn":"say");
+  if(!ngoai){
+    s.innerHTML='<h3>Dự báo nội suy</h3>'+
+      '<p>Sản lượng '+fmt(SLMOI,1)+' nghìn sản phẩm nằm trong khoảng dữ liệu đã có, từ 2 tới 9 nghìn.</p>'+
+      '<p>Chi phí dự báo: '+fmt(OLS.b1,0)+' + '+fmt(OLS.b2,0)+' × '+fmt(SLMOI,1)+' = <strong>'+fmt(yh,1)+' triệu đồng</strong>.</p>';
+  } else {
+    s.innerHTML='<strong>Cảnh báo ngoại suy.</strong> Sản lượng '+fmt(SLMOI,1)+
+      ' nghìn nằm ngoài khoảng 2 tới 9 nghìn của dữ liệu. Công thức vẫn cho ra '+fmt(yh,1)+
+      ' triệu, nhưng ở mức sản lượng đó xưởng có thể phải thuê thêm lò hoặc chạy ca đêm, tức là định phí đổi và đường thẳng cũ không còn mô tả đúng.';
+  }
+}
+
+/* ================= BƯỚC: PHẦN DƯ VÀ RSS ================= */
+var BACHON=2;
+function veSegBa(){
+  seg("sgBa", BA.map(function(z,i){ return {label:z.ten, value:i}; }), BACHON,
+    function(v){ BACHON=v; veSegBa(); capNhatBa(); });
+}
+function capNhatBa(){
+  var z=BA[BACHON];
+  veTan("chBa",{nhan:true, phanDu:true, nhanPhanDu:true,
+    duong:[{b1:z.b1,b2:z.b2,mau:z.mau,ten:z.ten}].concat(
+      BA.filter(function(w,i){ return i!==BACHON; }).map(function(w){
+        return {b1:w.b1,b2:w.b2,mau:w.mau,dash:"6 6",manh:2}; }))});
+  var e=phanDu(DU,z.b1,z.b2), mx=0;
+  e.forEach(function(v){ mx=Math.max(mx,Math.abs(v)); });
+  var a=$("kRssBa"); if(a) a.textContent=fmt(z.rss,0);
+  var b=$("kMaxBa"); if(b) b.textContent=fmt(mx,1);
+  BA.forEach(function(w,i){
+    var tr=$("trBa"+i);
+    if(tr) tr.style.background=(i===BACHON?"#E9F0FD":"");
+  });
+}
+
+/* ================= BƯỚC: KÉO ĐƯỜNG ================= */
+function capNhatKeo(){
+  var c=chiSo(DU,B1,B2);
+  veTan("chKeo",{nhan:true, phanDu:true,
+    duong:[{b1:B1,b2:B2,mau:"#C2410C"},{b1:OLS.b1,b2:OLS.b2,mau:GRAY,dash:"6 6",manh:2}]});
+  veParabol("chPar",B2);
+  var a=$("vB1"); if(a) a.textContent=fmt(B1,1);
+  var b=$("vB2"); if(b) b.textContent=fmt(B2,1);
+  var r=$("kRssKeo"); if(r) r.textContent=fmt(c.rss,1);
+  var u=$("uRssKeo"); if(u) u.textContent=(Math.abs(c.rss-CS.rss)<0.05?"đã tới đáy":"triệu bình phương");
+  var k=$("kCach"); if(k) k.textContent=fmt(c.rss-CS.rss,1);
+}
+
+/* ================= BƯỚC: NGOẠI LAI ================= */
+function veSegNg(){
+  seg("sgNg",[{label:"8 tháng",value:false},{label:"Thêm Th9",value:true}], BATNGOAI,
+    function(v){ BATNGOAI=v; veSegNg(); capNhatNgoai(); });
+}
+function capNhatNgoai(){
+  if(BATNGOAI){
+    veTan("chNg",{rows:DU9, nhan:true, yhi:80,
+      duong:[{b1:OLS9.b1,b2:OLS9.b2,mau:"#C2410C",ten:"đường mới"},
+             {b1:OLS.b1,b2:OLS.b2,mau:GRAY,dash:"6 6",manh:2.2,ten:"đường cũ"}]});
+  } else {
+    veTan("chNg",{nhan:true, duong:[{b1:OLS.b1,b2:OLS.b2,mau:"#1D4ED8"}]});
+  }
+  var kp=$("ngKpi");
+  if(kp){
+    if(BATNGOAI){
+      kp.innerHTML=kpiBox("Hệ số chặn ω̂₁",fmt(OLS9.b1,2),"từ "+fmt(OLS.b1,0)+" lên","#C2410C")+
+        kpiBox("Hệ số góc ω̂₂",fmt(OLS9.b2,2),"từ "+fmt(OLS.b2,0)+" tụt xuống","#C2410C")+
+        kpiBox("R²",fmt(CS9.r2,3),"từ "+fmt(CS.r2,3)+" tụt xuống");
+    } else {
+      kp.innerHTML=kpiBox("Hệ số chặn ω̂₁",fmt(OLS.b1,0),"triệu đồng")+
+        kpiBox("Hệ số góc ω̂₂",fmt(OLS.b2,0),"triệu mỗi nghìn sp")+
+        kpiBox("R²",fmt(CS.r2,3),"trên tám tháng");
+    }
+  }
+  var s=$("ngSay"); if(!s) return;
+  s.className=(BATNGOAI?"note warn":"say");
+  if(!BATNGOAI){
+    s.innerHTML='<h3>Tám tháng chưa có điểm lạ</h3>'+
+      '<p>Tám điểm nằm sát đường, phần dư lớn nhất chỉ 2 triệu đồng.</p>'+
+      '<p>Bấm Thêm Th9 để xem một tháng bất thường làm gì với hai hệ số.</p>';
+  } else {
+    s.innerHTML='<strong>Th9 kéo lệch cả đường.</strong> Tháng đó xưởng dừng máy sửa lò, sản lượng chỉ 3 nghìn sản phẩm nhưng chi phí tới 70 triệu. '+
+      'Hệ số góc tụt từ '+fmt(OLS.b2,0)+' xuống '+fmt(OLS9.b2,2)+', nghĩa là mô hình mới nói biến phí chỉ còn khoảng '+fmt(Math.round(OLS9.b2*1000/100)*100,0)+
+      ' đồng một sản phẩm, sai hẳn so với sổ sách. Đo bằng đường cũ trên chín tháng thì MAE nhảy từ '+fmt(CS.mae,1)+' lên '+fmt(CS9CU.mae,2)+
+      ' triệu và RMSE từ '+fmt(CS.rmse,2)+' lên '+fmt(CS9CU.rmse,2)+' triệu.';
+  }
+}
+
+/* ================= BƯỚC: HỒI QUY BỘI ================= */
+function veSegKm(){
+  seg("sgKm",[{label:"Chỉ sản lượng",value:false},{label:"Thêm khuyến mại",value:true}], BATKM,
+    function(v){ BATKM=v; veSegKm(); capNhatKm(); });
+}
+function capNhatKm(){
+  if(BATKM){
+    veTan("chBoi",{nhan:true, mauTheoKM:true, phanDu:true,
+      duong:[{b1:BOI.b1,b2:BOI.b2,b3:BOI.b3,mau:"#1D4ED8"}]});
+  } else {
+    veTan("chBoi",{nhan:true, mauTheoKM:true, phanDu:true,
+      duong:[{b1:OLS.b1,b2:OLS.b2,mau:"#1D4ED8"}]});
+  }
+  var kp=$("kmKpi");
+  if(kp){
+    if(BATKM){
+      kp.innerHTML=kpiBox("RSS",fmt(CSB.rss,0),"từ "+fmt(CS.rss,0)+" giảm xuống",HEXES[0])+
+        kpiBox("RMSE",fmt(CSB.rmse,2),"triệu đồng",HEXES[0])+
+        kpiBox("R²",fmt(CSB.r2,4),"từ "+fmt(CS.r2,3)+" lên");
+    } else {
+      kp.innerHTML=kpiBox("RSS",fmt(CS.rss,0),"triệu bình phương")+
+        kpiBox("RMSE",fmt(CS.rmse,2),"triệu đồng")+
+        kpiBox("R²",fmt(CS.r2,3),"trên tám tháng");
+    }
+  }
+  var s=$("kmSay"); if(!s) return;
+  if(!BATKM){
+    s.className="say";
+    s.innerHTML='<h3>Phần dư còn theo một quy luật</h3>'+
+      '<p>Xem lại các đoạn nét đứt: <strong>bốn tháng có khuyến mại đều nằm trên đường</strong>, bốn tháng còn lại đều nằm dưới.</p>'+
+      '<p>Sai lệch có quy luật như vậy là dấu hiệu còn một yếu tố chưa đưa vào mô hình. Bấm Thêm khuyến mại để đưa cột đó vào.</p>';
+  } else {
+    s.className="say";
+    s.innerHTML='<h3>Hồi quy bội với hai biến</h3>'+
+      '<p>Ŷᵢ = '+fmt(BOI.b1,1)+' + '+fmt(BOI.b2,0)+'X₂ᵢ + '+fmt(BOI.b3,0)+'D₃ᵢ</p>'+
+      '<ul><li>ω̂₂ = '+fmt(BOI.b2,0)+': giữ nguyên tình trạng khuyến mại, thêm một nghìn sản phẩm thì chi phí tăng '+fmt(BOI.b2,0)+' triệu.</li>'+
+      '<li>ω̂₃ = '+fmt(BOI.b3,0)+': cùng một mức sản lượng, tháng chạy khuyến mại tốn thêm '+fmt(BOI.b3,0)+' triệu.</li></ul>'+
+      '<p>Hai đường song song vì biến giả chỉ dịch đường lên '+fmt(BOI.b3,0)+' triệu, không làm đổi độ dốc. RSS từ '+
+      fmt(CS.rss,0)+' còn '+fmt(CSB.rss,0)+', phần dư lớn nhất chỉ còn 0,5 triệu.</p>';
+  }
+}
+
+/* ================= ĐIỀU KHIỂN ================= */
+function renderProg(){
+  var ol=$("prog"); ol.innerHTML="";
+  VSTEP.forEach(function(s,i){
+    var li=document.createElement("li");
+    li.className = i===STEP ? "cur" : (i<STEP ? "done" : "");
+    var b=document.createElement("button"); b.type="button";
+    b.innerHTML='<span class="sn">'+(i<4 ? "Dẫn nhập "+(i+1) : "Kỹ thuật "+(i-3))+'</span>'+
+                '<span class="st">'+s.label+'</span>';
+    b.addEventListener("click",function(){ goStep(i); });
+    li.appendChild(b); ol.appendChild(li);
+  });
+}
+function showStep(){
+  renderProg();
+  $("stage").innerHTML = VSTEP[STEP].html();
+  VSTEP[STEP].draw();
+  $("bPrev").disabled = STEP===0;
+  $("bNext").disabled = STEP===VSTEP.length-1;
+  $("bNext").textContent = STEP===VSTEP.length-1 ? "Đã xong" : "Bước tiếp ▶";
+  $("runHint").textContent = STEP===0 ? "Bốn bước đầu cho thấy hồi quy làm được gì. Năm bước sau mở ra xem máy làm thế nào." : "";
+}
+function goStep(s){ STEP=clamp(s,0,VSTEP.length-1); showStep(); }
+$("bPrev").addEventListener("click",function(){ goStep(STEP-1); });
+$("bNext").addEventListener("click",function(){ goStep(STEP+1); });
+showStep();
+
+})();
+</script>
+</body>
+</html>
